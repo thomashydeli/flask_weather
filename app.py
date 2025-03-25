@@ -42,30 +42,45 @@ def fetch_weather_data(start_date, N=8):
     return data[::-1]
 
 
-def generate_chart(data):
+def generate_charts(data):
     """
-    Generate an interactive Plotly chart for temperature and humidity.
-    Returns a HTML div that can be embedded in the template.
+    Generate two interactive Plotly charts for temperature and humidity.
+    Returns two HTML divs that can be embedded in the template.
     """
     # Filter out days with missing data
-    dates = [d["date"] for d in data if d["temperature"] is not None and d["humidity"] is not None]
-    temps = [d["temperature"] for d in data if d["temperature"] is not None and d["humidity"] is not None]
-    hums = [d["humidity"] for d in data if d["temperature"] is not None and d["humidity"] is not None]
+    filtered = [d for d in data if d["temperature"] is not None and d["humidity"] is not None]
+    dates = [d["date"] for d in filtered]
+    temps = [d["temperature"] for d in filtered]
+    hums = [d["humidity"] for d in filtered]
 
-    trace_temp = go.Scatter(x=dates, y=temps, mode='lines+markers', name='Temperature')
-    trace_hum = go.Scatter(x=dates, y=hums, mode='lines+markers', name='Humidity')
-
-    layout = go.Layout(
-        title='Temperature and Humidity Trend (Last 30 Days)',
+    # Create Temperature Chart
+    trace_temp = go.Scatter(x=dates, y=temps, mode='lines+markers', name='Temperature', 
+                            line={'color':'red','shape': 'spline'}
+                )
+    layout_temp = go.Layout(
+        title='Temperature Trend (Last 30 Days)',
         xaxis={'title': 'Date'},
-        yaxis={'title': 'Value'},
+        yaxis={'title': 'Temperature','rangemode': 'tozero'},
         margin=dict(l=40, r=40, t=40, b=40)
     )
+    fig_temp = go.Figure(data=[trace_temp], layout=layout_temp)
+    chart_div_temp = plot(fig_temp, output_type='div', include_plotlyjs=False)
 
-    fig = go.Figure(data=[trace_temp, trace_hum], layout=layout)
-    # Generate the HTML div with the interactive chart.
-    chart_div = plot(fig, output_type='div', include_plotlyjs=False)
-    return chart_div
+    # Create Humidity Chart
+    trace_hum = go.Scatter(x=dates, y=hums, mode='lines+markers', name='Humidity', 
+                           line={'color':'blue','shape': 'spline'}
+                )
+    layout_hum = go.Layout(
+        title='Humidity Trend (Last 30 Days)',
+        xaxis={'title': 'Date'},
+        yaxis={'title': 'Humidity','rangemode': 'tozero'},
+        margin=dict(l=40, r=40, t=40, b=40)
+    )
+    fig_hum = go.Figure(data=[trace_hum], layout=layout_hum)
+    chart_div_hum = plot(fig_hum, output_type='div', include_plotlyjs=False)
+
+    return chart_div_temp, chart_div_hum
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -80,9 +95,9 @@ def index():
         start_date = datetime.date.today()
 
     weather_data = fetch_weather_data(start_date)
-    # Reverse the data order if needed.
-    chart = generate_chart(weather_data[::-1])
-    return render_template('index.html', data=weather_data, chart=chart, start_date=start_date.strftime("%Y-%m-%d"))
+    chart_temp, chart_hum = generate_charts(weather_data[::-1])
+    return render_template('index.html', data=weather_data, chart_temp=chart_temp, chart_hum=chart_hum, start_date=start_date.strftime("%Y-%m-%d"))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
